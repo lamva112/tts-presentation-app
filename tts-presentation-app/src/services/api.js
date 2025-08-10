@@ -157,9 +157,41 @@ export const getGeneratedSpeech = async (presentationId, slideNumber, voice) => 
   }
 };
 
+/**
+ * Upload tài liệu (Word/PDF) để xử lý.
+ * @param {FormData} formData - FormData chứa file và description.
+ * @returns {Promise<object>} - Promise chứa dữ liệu trả về từ API.
+ */
+export const uploadDocument = async (formData) => {
+  try {
+    console.log(`Uploading document to: ${apiClient.defaults.baseURL}/documents/upload`);
+
+    const response = await apiClient.post('/documents/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    console.log("Document upload successful:", response.data);
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      console.error('Document Upload Error - Status:', error.response.status);
+      console.error('Document Upload Error - Data:', error.response.data);
+      console.error('Document Upload Error - Headers:', error.response.headers);
+    } else if (error.request) {
+      console.error('Document Upload Error - No Response:', error.request);
+    } else {
+      console.error('Document Upload Error - Request Setup:', error.message);
+    }
+    throw error;
+  }
+};
+
 // Export một object chứa tất cả các hàm API
 export default {
   uploadPresentation,
+  uploadDocument,
   getPresentationStatus,
   getViewUrl,
   getOriginalSpeech,

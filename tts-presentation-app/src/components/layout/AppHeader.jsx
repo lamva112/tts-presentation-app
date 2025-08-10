@@ -1,12 +1,18 @@
 // File: src/components/layout/AppHeader.jsx
-import React from 'react';
-import { Group, Burger, Title, Avatar, Menu, ActionIcon, Text } from '@mantine/core';
+import React, { useState } from 'react';
+import { Group, Burger, Title, Avatar, Menu, ActionIcon, Text, Button, Modal, FileInput, Textarea, Stack, notifications } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconSettings, IconLogout, IconUserCircle } from '@tabler/icons-react'; // Icon cho menu
+import { IconSettings, IconLogout, IconUserCircle, IconUpload, IconFileText, IconFileDescription, IconCheck, IconX } from '@tabler/icons-react'; // Icon cho menu
+import { uploadDocument } from '../../services/api';
 
 function AppHeader({ mobileOpened, toggleMobile, desktopOpened, toggleDesktop }) {
   // State cho việc mở/đóng user menu
   const [userMenuOpened, { toggle: toggleUserMenu }] = useDisclosure(false);
+  // State cho modal upload
+  const [uploadModalOpened, { open: openUploadModal, close: closeUploadModal }] = useDisclosure(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadDescription, setUploadDescription] = useState('');
 
   // TODO: Thay thế bằng logic lấy thông tin user thật khi có xác thực
   const isLoggedIn = true; // Giả sử đã login
@@ -16,6 +22,60 @@ function AppHeader({ mobileOpened, toggleMobile, desktopOpened, toggleDesktop })
       console.log("Logout clicked");
       // TODO: Thêm logic logout
   }
+
+  const handleDocumentUpload = async () => {
+    if (!uploadFile) return;
+    
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      if (uploadDescription.trim()) {
+        formData.append('description', uploadDescription.trim());
+      }
+      
+      const response = await uploadDocument(formData);
+      console.log('Document uploaded successfully:', response);
+      
+      // Show success notification
+      notifications.show({
+        title: 'Upload Successful!',
+        message: `Document "${uploadFile.name}" has been uploaded successfully.`,
+        color: 'green',
+        icon: <IconCheck size={16} />,
+      });
+      
+      // Reset form and close modal
+      setUploadFile(null);
+      setUploadDescription('');
+      closeUploadModal();
+      
+    } catch (error) {
+      console.error('Upload failed:', error);
+      
+      // Show error notification
+      let errorMessage = 'Upload failed. Please try again.';
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      notifications.show({
+        title: 'Upload Failed',
+        message: errorMessage,
+        color: 'red',
+        icon: <IconX size={16} />,
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const resetUploadForm = () => {
+    setUploadFile(null);
+    setUploadDescription('');
+  };
 
   return (
     <Group h="100%" px="md" justify="space-between">
@@ -28,8 +88,19 @@ function AppHeader({ mobileOpened, toggleMobile, desktopOpened, toggleDesktop })
             {/* <img src="/path/to/logo.png" alt="Logo" height={30} /> */}
        </Group>
 
-      {/* Khu vực User Menu */}
+      {/* Khu vực Upload Button và User Menu */}
       <Group>
+          {/* Upload Document Button */}
+          <Button
+            leftSection={<IconUpload size={16} />}
+            variant="light"
+            color="blue"
+            onClick={openUploadModal}
+            size="sm"
+          >
+            Upload Document
+          </Button>
+
           {isLoggedIn ? (
                <Menu shadow="md" width={200} opened={userMenuOpened} onChange={toggleUserMenu}>
                  <Menu.Target>
@@ -58,6 +129,50 @@ function AppHeader({ mobileOpened, toggleMobile, desktopOpened, toggleDesktop })
               <Text>Login</Text> // Hoặc Button Login
           )}
       </Group>
+
+      {/* Upload Document Modal */}
+      <Modal 
+        opened={uploadModalOpened} 
+        onClose={closeUploadModal}
+        title="Upload Document"
+        size="md"
+        onCloseComplete={resetUploadForm}
+      >
+        <Stack gap="md">
+          <FileInput
+            label="Select Document"
+            placeholder="Choose Word or PDF file"
+            accept=".doc,.docx,.pdf"
+            value={uploadFile}
+            onChange={setUploadFile}
+            leftSection={<IconFileText size={16} />}
+            required
+          />
+          
+          <Textarea
+            label="Description (Optional)"
+            placeholder="Add a description for this document..."
+            value={uploadDescription}
+            onChange={(event) => setUploadDescription(event.currentTarget.value)}
+            leftSection={<IconFileDescription size={16} />}
+            rows={3}
+          />
+
+          <Group justify="flex-end" mt="md">
+            <Button variant="outline" onClick={closeUploadModal}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleDocumentUpload}
+              loading={uploading}
+              disabled={!uploadFile}
+              leftSection={<IconUpload size={16} />}
+            >
+              {uploading ? 'Uploading...' : 'Upload'}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Group>
   );
 }
