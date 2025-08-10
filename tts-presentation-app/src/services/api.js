@@ -188,6 +188,58 @@ export const uploadDocument = async (formData) => {
   }
 };
 
+/**
+ * Upload user script for a presentation.
+ * @param {string} presentationId - ID của bài thuyết trình.
+ * @returns {Promise<object>} - Promise chứa dữ liệu trả về từ API.
+ */
+export const uploadUserScript = async (presentationId) => {
+  if (!presentationId) throw new Error("uploadUserScript requires a presentationId");
+  try {
+    console.log(`Uploading user script for presentation: ${presentationId}`);
+    const response = await apiClient.post(`/presentations/${presentationId}/upload-user-script`);
+    console.log("User script upload successful:", response.data);
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      console.error('User Script Upload Error - Status:', error.response.status);
+      console.error('User Script Upload Error - Data:', error.response.data);
+      console.error('User Script Upload Error - Headers:', error.response.headers);
+    } else if (error.request) {
+      console.error('User Script Upload Error - No Response:', error.request);
+    } else {
+      console.error('User Script Upload Error - Request Setup:', error.message);
+    }
+    throw error;
+  }
+};
+
+/**
+ * Generate bot script for a presentation.
+ * @param {string} presentationId - ID của bài thuyết trình.
+ * @returns {Promise<object>} - Promise chứa dữ liệu trả về từ API.
+ */
+export const generateBotScript = async (presentationId) => {
+  if (!presentationId) throw new Error("generateBotScript requires a presentationId");
+  try {
+    console.log(`Generating bot script for presentation: ${presentationId}`);
+    const response = await apiClient.post(`/presentations/${presentationId}/generate-bot-script`);
+    console.log("Bot script generation successful:", response.data);
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      console.error('Bot Script Generation Error - Status:', error.response.status);
+      console.error('Bot Script Generation Error - Data:', error.response.data);
+      console.error('Bot Script Generation Error - Headers:', error.response.headers);
+    } else if (error.request) {
+      console.error('Bot Script Generation Error - No Response:', error.request);
+    } else {
+      console.error('Bot Script Generation Error - Request Setup:', error.message);
+    }
+    throw error;
+  }
+};
+
 // Export một object chứa tất cả các hàm API
 export default {
   uploadPresentation,
@@ -197,4 +249,6 @@ export default {
   getOriginalSpeech,
   getGeneratedScript,
   getGeneratedSpeech,
+  uploadUserScript,
+  generateBotScript,
 };
