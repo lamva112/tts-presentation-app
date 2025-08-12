@@ -2,9 +2,9 @@
 import axios from 'axios';
 
 // Đọc base URL từ biến môi trường (do Vite cung cấp qua import.meta.env)
-// Lưu ý: giữ nguyên chuỗi rỗng ('') để dùng relative path với Vite proxy
+// Mặc định sử dụng Azure URL thay vì localhost
 const apiBaseFromEnv = import.meta.env.VITE_API_BASE_URL;
-const API_BASE_URL = apiBaseFromEnv === undefined ? 'http://localhost:8000' : apiBaseFromEnv;
+const API_BASE_URL = apiBaseFromEnv === undefined ? 'https://aipresentationapp-fdf7a2djgpf5ercp.southeastasia-01.azurewebsites.net' : apiBaseFromEnv;
 // Cho phép override API_PREFIX qua biến môi trường; mặc định '/api/v1'
 const API_PREFIX = import.meta.env.VITE_API_PREFIX ?? '/api/v1';
 
@@ -106,14 +106,15 @@ export const getViewUrl = async (presentationId) => {
 export const getOriginalSpeech = async (presentationId, slideNumber, voice) => {
   if (!presentationId || !slideNumber) throw new Error("getOriginalSpeech requires presentationId and slideNumber");
   try {
-    const params = voice ? { voice } : {}; // Tạo object params nếu có voice
-    const response = await apiClient.get(`/presentations/${presentationId}/slides/${slideNumber}/speech`, {
-      params: params, // Truyền voice qua query params
+    const params = { slide_number: slideNumber }; // Truyền slide_number qua query params
+    if (voice) params.voice = voice; // Thêm voice nếu có
+    const response = await apiClient.get(`/presentations/${presentationId}/bot-script-speech`, {
+      params: params, // Truyền slide_number và voice qua query params
       responseType: 'blob', // Quan trọng: Yêu cầu axios trả về dạng Blob
     });
     return response.data; // Dữ liệu là một Blob object
   } catch (error) {
-    console.error(`Error getting original speech for slide ${slideNumber}:`, error.response || error.message);
+    console.error(`Error getting bot script speech for slide ${slideNumber}:`, error.response || error.message);
     throw error;
   }
 };
@@ -189,6 +190,40 @@ export const uploadDocument = async (formData) => {
 };
 
 /**
+ * Upload presentation materials (Word/PDF) cho một bài thuyết trình cụ thể.
+ * @param {FormData} formData - FormData chứa file.
+ * @param {string} presentationId - ID của bài thuyết trình.
+ * @returns {Promise<object>} - Promise chứa dữ liệu trả về từ API.
+ */
+export const uploadPresentationMaterials = async (formData, presentationId) => {
+  if (!presentationId) throw new Error("uploadPresentationMaterials requires a presentationId");
+
+  try {
+    console.log(`Uploading materials to: ${apiClient.defaults.baseURL}/presentations/${presentationId}/upload-user-script`);
+
+    const response = await apiClient.post(`/presentations/${presentationId}/upload-user-script`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    console.log("Materials upload successful:", response.data);
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      console.error('Materials Upload Error - Status:', error.response.status);
+      console.error('Materials Upload Error - Data:', error.response.data);
+      console.error('Materials Upload Error - Headers:', error.response.headers);
+    } else if (error.request) {
+      console.error('Materials Upload Error - No Response:', error.request);
+    } else {
+      console.error('Materials Upload Error - Request Setup:', error.message);
+    }
+    throw error;
+  }
+};
+
+/**
  * Upload user script for a presentation.
  * @param {string} presentationId - ID của bài thuyết trình.
  * @returns {Promise<object>} - Promise chứa dữ liệu trả về từ API.
@@ -244,6 +279,7 @@ export const generateBotScript = async (presentationId) => {
 export default {
   uploadPresentation,
   uploadDocument,
+  uploadPresentationMaterials, // Thêm function mới
   getPresentationStatus,
   getViewUrl,
   getOriginalSpeech,
